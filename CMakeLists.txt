@@ -9,5 +9,6 @@ set(CMAKE_CXX_STANDARD 17)
 pico_sdk_init()
 
 add_subdirectory(helloworld)
+add_subdirectory(ssd1306_i2c)
 
 # vim:set ts=8 sts=4 sw=4 tw=0 et:
