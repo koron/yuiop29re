@@ -1,0 +1,38 @@
+name: Build
+
+on: [ push ]
+
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    env:
+      PICO_SDK_PATH: ${{ github.workspace }}/__pico-sdk__
+
+    steps:
+
+    - uses: actions/checkout@v4
+
+    - name: Checkout pico-sdk
+      uses: actions/checkout@v4
+      with:
+        repository: raspberrypi/pico-sdk
+        ref: '2.0.0'
+        path: __pico-sdk__
+        submodules: true
+
+    - name: Install ARM toolchains
+      run: |
+        sudo apt update
+        sudo apt install -y cmake gcc-arm-none-eabi gcc g++
+
+    - run: make
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: firmwares
+        path: |
+          build/*/*.uf2
+          build/*/*.dis
+          build/*/*.elf.map
