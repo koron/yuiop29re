@@ -6,8 +6,6 @@ pico_enable_stdio_uart(helloworld 1)
 pico_enable_stdio_usb(helloworld 0)
 
 target_compile_definitions(helloworld PUBLIC
-	PICO_DEFAULT_UART_TX_PIN=16
-	PICO_DEFAULT_UART_RX_PIN=17
 	LEDARRAY_NUM=29
 	LEDARRAY_PIN=0
 	LEDARRAY_PIO=pio0

@@ -316,7 +316,7 @@ int main() {
     bi_decl(bi_2pins_with_func(PICO_DEFAULT_I2C_SDA_PIN, PICO_DEFAULT_I2C_SCL_PIN, GPIO_FUNC_I2C));
     bi_decl(bi_program_description("SSD1306 OLED driver I2C example for the Raspberry Pi Pico"));
 
-    printf("Hello, SSD1306 OLED display! Look at my raspberries..\n");
+    printf("Hello, YUIOP29RE OLED display! Look at my devices..\n");
 
     // I2C is "open drain", pull ups to keep signal high when no data is being
     // sent
