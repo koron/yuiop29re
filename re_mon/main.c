@@ -13,8 +13,8 @@
 // the counterclockwise direction, the sequence is reversed, becoming B
 // connection, A connection, B disconnection, A disconnection. This driver
 // assumes that C is connected to GND and A and B are in a pulled-up state.
-// Therefore, both A and B are in a Hi state initially, and it is expected that
-// they will become Lo states upon connection and Hi states upon disconnection.
+// Therefore, both A and B are expected to be in a Hi state initially, and to
+// become Lo states upon connection and Hi states upon disconnection.
 //
 // This driver encodes the Hi state as 0 and the Lo state as 1 when encoding
 // the A and B quantity pins to a word. It also assigns A to the 0th bit and B
@@ -34,11 +34,11 @@
 // transitions in the order of 10, 11, 01, 00.
 //
 // The transition history of this 2-bit word is represented by an 8-bit =
-// 1-byte variable using bit shift. Clockwise rotation is 0x1e (=00, 01, 11,
-// 10), and counterclockwise rotation is 0x2d (=00, 10, 11, 01). When the
-// latest 2-bit word is 00, the direction of rotation is determined by
-// comparing the value of one variable indicated by the transition history with
-// the aforementioned value, and whether the rotation was successful or not.
+// 1-byte variable using bit shift. Clockwise rotation becomes 0x1e (=00, 01,
+// 11, 10), and counterclockwise rotation becomes 0x2d (=00, 10, 11, 01). When
+// the latest 2-bit word is 00, the variable indicating the transition history
+// is compared with the aforementioned values to determine whether the rotation
+// was successful and in which direction.
 
 typedef struct {
     uint8_t pinA;
