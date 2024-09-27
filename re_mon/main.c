@@ -17,9 +17,9 @@
 // become Lo states upon connection and Hi states upon disconnection.
 //
 // This driver encodes the Hi state as 0 and the Lo state as 1 when encoding
-// the A and B quantity pins to a word. It also assigns A to the 0th bit and B
-// to the 1st bit. The resulting 2-bit word and the corresponding relationship
-// with the A and B pins are as shown in the following table.
+// both pins A and B to a word. It also assigns A to the 0th bit and B to the
+// 1st bit. The resulting 2-bit word and the corresponding relationship between
+// pins A and B are as shown in the following table.
 //
 // | Word | B | A |
 // |-----:|---|---|
@@ -33,12 +33,13 @@
 // rotation of the knob starts with 00 as the initial state and the 2-bit word
 // transitions in the order of 10, 11, 01, 00.
 //
-// The transition history of this 2-bit word is represented by an 8-bit =
-// 1-byte variable using bit shift. Clockwise rotation becomes 0x1e (=00, 01,
-// 11, 10), and counterclockwise rotation becomes 0x2d (=00, 10, 11, 01). When
-// the latest 2-bit word is 00, the variable indicating the transition history
-// is compared with the aforementioned values to determine whether the rotation
-// was successful and in which direction.
+// The past four words of the two-bit word transition history are packed into
+// an 8-bit = 1-byte variable in order from the least significant bit using bit
+// shift. Clockwise rotation becomes 0x1e (=00, 01, 11, 10), and
+// counterclockwise rotation becomes 0x2d (=00, 10, 11, 01). When the latest
+// two-bit word is 00, the rotation is judged to be successful or not and the
+// direction of the rotation is determined by comparing the variable indicating
+// the transition history with the above values.
 
 typedef struct {
     uint8_t pinA;
@@ -48,31 +49,35 @@ typedef struct {
 } rotary_encoder_t;
 
 void rotary_encoder_init(rotary_encoder_t* re, uint a, uint b) {
+    // Setup two GPIO registers for an encoder.
+    uint mask = (1 << a) | (1 << b);
+    gpio_init_mask(mask);
+    gpio_set_dir_in_masked(mask);
+    gpio_pull_up(a);
+    gpio_pull_up(b);
+
+    // Initialize rotary_encoder_t's fields.
     re->pinA = a;
     re->pinB = b;
     re->history = 0;
     re->changedAt = 0;
-
-    // Setup two GPIO registers for an encoder.
-    gpio_init(a);
-    gpio_set_dir(a, GPIO_IN);
-    gpio_pull_up(a);
-    gpio_init(b);
-    gpio_set_dir(b, GPIO_IN);
-    gpio_pull_up(b);
 }
 
 int8_t rotary_encoder_task(rotary_encoder_t *re, uint64_t now) {
-    uint32_t curr = gpio_get_all();
-    uint8_t pins =
-        ((curr & (1 << re->pinA)) != 0 ? 0 : 1) |
-        ((curr & (1 << re->pinB)) != 0 ? 0 : 2);
-    if (pins == (re->history & 0x03) || now - re->changedAt < 250) {
+    // All GPIO bits are inverted beforehand, and then the desired A and B bits
+    // are extracted and combined as a 2-bit word.
+    uint32_t curr = ~gpio_get_all();
+    uint8_t word = ((curr >> re->pinA) & 1) |
+                   ((curr >> re->pinB) & 1) << 1;
+    // If the current 2-bit word is different from the previous 2-bit word, and
+    // more than 250μs have passed since the last update for debouncing, the
+    // state is updated.
+    if (word == (re->history & 0x03) || now - re->changedAt < 250) {
         return 0;
     }
-    //printf("  history=%02X pins=%X\n", re->history, pins);
+    //printf("  history=%02X word=%X\n", re->history, word);
     int8_t out = 0;
-    if (pins == 0) {
+    if (word == 0) {
         switch (re->history) {
             case 0x1e: /* 0b00_01_11_10 + 0b00 */
                 // Detected a clockwise rotation.
@@ -84,7 +89,7 @@ int8_t rotary_encoder_task(rotary_encoder_t *re, uint64_t now) {
                 break;
         }
     }
-    re->history = re->history << 2 | pins;
+    re->history = re->history << 2 | word;
     re->changedAt = now;
     return out;
 }
