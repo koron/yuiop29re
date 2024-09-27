@@ -21,12 +21,12 @@
 // to the 1st bit. The resulting 2-bit word and the corresponding relationship
 // with the A and B pins are as shown in the following table.
 //
-// | Word | A | B |
+// | Word | B | A |
 // |-----:|---|---|
 // | 00   |Hi |Hi |
-// | 10   |Lo |Hi |
-// | 11   |Lo |Lo |
 // | 01   |Hi |Lo |
+// | 11   |Lo |Lo |
+// | 10   |Lo |Hi |
 //
 // Clockwise rotation of the knob starts with 00 as the initial state and the
 // 2-bit word transitions in the order of 01, 11, 10, 00. Counterclockwise
