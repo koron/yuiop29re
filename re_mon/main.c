@@ -6,7 +6,7 @@
 typedef struct {
     uint8_t pinA;
     uint8_t pinB;
-    uint16_t history;
+    uint8_t history;
     uint64_t changedAt;
 } rotary_encoder_t;
 
@@ -30,19 +30,24 @@ int8_t rotary_encoder_task(rotary_encoder_t *re, uint64_t now) {
     uint8_t pins =
         ((curr & (1 << re->pinA)) != 0 ? 0 : 1) |
         ((curr & (1 << re->pinB)) != 0 ? 0 : 2);
-    if (pins == (re->history & 0x03) || now - re->changedAt < 100) {
+    if (pins == (re->history & 0x03) || now - re->changedAt < 250) {
         return 0;
     }
-    re->history = (re->history << 2 | pins) & 0x3FF;
-    re->changedAt = now;
-    switch (re->history) {
-        case 0x78: // 0b00_01_11_10_00
-            return 1;
-        case 0xb4: // 0b00_10_11_01_00
-            return -1;
-        default:
-            return 0;
+    //printf("  history=%02X pins=%X\n", re->history, pins);
+    int8_t out = 0;
+    if (pins == 0) {
+        switch (re->history) {
+            case 0x1e: /* 0b00_01_11_10 + 0b00 */
+                out = 1;
+                break;
+            case 0x2d: /* 0b00_10_11_01 + 0b00 */
+                out = -1;
+                break;
+        }
     }
+    re->history = re->history << 2 | pins;
+    re->changedAt = now;
+    return out;
 }
 
 int main() {
