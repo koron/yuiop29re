@@ -38,9 +38,11 @@ int8_t rotary_encoder_task(rotary_encoder_t *re, uint64_t now) {
     if (pins == 0) {
         switch (re->history) {
             case 0x1e: /* 0b00_01_11_10 + 0b00 */
+                // Detected a clockwise rotation.
                 out = 1;
                 break;
             case 0x2d: /* 0b00_10_11_01 + 0b00 */
+                // Detected a counter clockwise rotation.
                 out = -1;
                 break;
         }
