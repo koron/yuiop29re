@@ -1,1 +1,2 @@
 add_subdirectory(driver_rotary_encoder)
+add_subdirectory(driver_ws2812_array)

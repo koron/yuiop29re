@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sys/types.h>
+#include <pico/types.h>
 
 typedef struct {
     uint8_t pinA;

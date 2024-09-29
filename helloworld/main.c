@@ -2,17 +2,18 @@
 
 #include "pico/stdlib.h"
 
-#include "ledarray.h"
+#include "driver/ws2812_array.h"
 
 static int clip_start = 0;
-static int clip_end = LEDARRAY_NUM;
+static int clip_end = WS2812_ARRAY_NUM;
 
+#if 1
 static void update_rainbow(uint t) {
     uint level = 0;
-    //uint level = (t / LEDARRAY_NUM) % 7;
+    //uint level = (t / WS2812_ARRAY_NUM) % 7;
     for (int i = clip_start; i < clip_end; i++) {
         uint8_t r = 0, g = 0, b = 0;
-        float h = (float)((i + t) % LEDARRAY_NUM)/ (float)LEDARRAY_NUM * 6;
+        float h = (float)((i + t) % WS2812_ARRAY_NUM)/ (float)WS2812_ARRAY_NUM * 6;
         int phase = (int)h;
         uint8_t f = (uint8_t)(255 * (h - (float)phase));
         switch (phase) {
@@ -48,7 +49,7 @@ static void update_rainbow(uint t) {
                 b = 255 - f;
                 break;
         }
-        ledarray_set_rgb(i, r >> level, g >> level, b >> level);
+        ws2812_array_set_rgb(i, r >> level, g >> level, b >> level);
     }
 }
 
@@ -62,15 +63,16 @@ void light_task(uint64_t now) {
     update_rainbow(state);
     state++;
 }
+#endif
 
 int main() {
     stdio_init_all();
     printf("\nYUIOP29RE: Hello World\n");
-    ledarray_init();
+    ws2812_array_init();
     while(true) {
         uint64_t now = time_us_64();
         light_task(now);
-        ledarray_task(now);
+        ws2812_array_task(now);
         tight_loop_contents();
     }
 }

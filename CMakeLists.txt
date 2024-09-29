@@ -15,6 +15,9 @@ add_compile_definitions(
 	PICO_DEFAULT_I2C_SCL_PIN=21
 	ROTALY_ENCODER_1_PIN_A=2
 	ROTALY_ENCODER_1_PIN_B=3
+	WS2812_ARRAY_NUM=29
+	WS2812_ARRAY_PIN=0
+	WS2812_ARRAY_PIO=pio0
 	)
 
 add_subdirectory(libs)

@@ -1,45 +1,29 @@
-#include <stdio.h>
+#include "driver/ws2812_array.h"
 
-#include "pico/stdlib.h"
 #include "pico/sem.h"
-#include "hardware/pio.h"
 #include "hardware/dma.h"
-#include "hardware/irq.h"
 
 #include "ws2812.pio.h"
 
-#ifndef LEDARRAY_NUM
-# pragma GCC error "LEDARRAY_NUM should be defined in config.h"
-# define LEDARRAY_NUM   0
-#endif
-#ifndef LEDARRAY_PIN
-# pragma GCC error "LEDARRAY_PIN should be defined in config.h"
-# define LEDARRAY_PIN   0
-#endif
-#ifndef LEDARRAY_PIO
-# define LEDARRAY_PIO   pio0
-# pragma GCC warning "LEDARRAY_PIO is unavailable, pio0 is auto selected."
-#endif
+bool ws2812_array_dirty = false;
+
+ws2812_state_t ws2812_array_states[WS2812_ARRAY_NUM] = {0};
 
 // reset delay for NeoPixel should be longer than 80us
 static const uint resetdelay_us = 100;
-
-bool ledarray_dirty = false;
-
-uint32_t ledarray_state[LEDARRAY_NUM] = {};
 
 static uint         dma_chan;
 static io_rw_32     dma_chan_mask;
 static alarm_id_t   resetdelay_alarm = 0;
 static struct       semaphore resetdelay_sem;
 
-__attribute__((weak)) void ledarray_resetdelay_completed(void) {}
+__attribute__((weak)) void ws2812_array_resetdelay_completed(void) {}
 
 static int64_t on_completed_resetdelay(alarm_id_t id, void *user_data) {
     resetdelay_alarm = 0;
     sem_release(&resetdelay_sem);
     // notify reset delay completed to user function.
-    ledarray_resetdelay_completed();
+    ws2812_array_resetdelay_completed();
     return 0; // no repeat
 }
 
@@ -55,15 +39,15 @@ static void __isr on_completed_dma() {
     }
 }
 
-void ledarray_init() {
+void ws2812_array_init(void) {
     sem_init(&resetdelay_sem, 1, 1);
 
-    PIO pio = LEDARRAY_PIO;
+    PIO pio = WS2812_ARRAY_PIO;
     int sm = pio_claim_unused_sm(pio, true);
 
     // setup PIO/SM with ws2812 program.
     uint offset = pio_add_program(pio, &ws2812_program);
-    ws2812_program_init(pio, sm, offset, LEDARRAY_PIN, 800000);
+    ws2812_program_init(pio, sm, offset, WS2812_ARRAY_PIN, 800000);
 
     // setup DMA to send LED data.
     int chan = dma_claim_unused_channel(true);
@@ -71,7 +55,7 @@ void ledarray_init() {
     channel_config_set_transfer_data_size(&c, DMA_SIZE_32);
     channel_config_set_dreq(&c, pio_get_dreq(pio, sm, true));
     dma_channel_configure(chan, &c, &pio->txf[sm], NULL,
-            count_of(ledarray_state), false);
+            count_of(ws2812_array_states), false);
 
     // enalbe IRQ0 at DMA trasfer completed.
     irq_set_exclusive_handler(DMA_IRQ_0, on_completed_dma);
@@ -82,14 +66,14 @@ void ledarray_init() {
     dma_chan_mask = 1u << chan;
 }
 
-bool ledarray_task(uint64_t now) {
-    if (!ledarray_dirty) {
+bool ws2812_array_task(uint64_t now) {
+    if (!ws2812_array_dirty) {
         return false;
     }
     if (!sem_acquire_timeout_ms(&resetdelay_sem, 0)) {
         return false;
     }
-    ledarray_dirty = false;
-    dma_channel_set_read_addr(dma_chan, ledarray_state, true);
+    ws2812_array_dirty = false;
+    dma_channel_set_read_addr(dma_chan, ws2812_array_states, true);
     return true;
 }
