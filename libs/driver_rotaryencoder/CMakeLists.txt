@@ -1,7 +1,0 @@
-add_library(driver_rotaryencoder INTERFACE)
-
-target_include_directories(driver_rotaryencoder INTERFACE ${CMAKE_CURRENT_LIST_DIR}/include)
-
-target_sources(driver_rotaryencoder INTERFACE rotaryencoder.c)
-
-target_link_libraries(driver_rotaryencoder INTERFACE hardware_gpio)

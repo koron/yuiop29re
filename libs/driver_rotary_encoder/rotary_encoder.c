@@ -1,4 +1,4 @@
-#include "driver/rotaryencoder.h"
+#include "driver/rotary_encoder.h"
 #include "hardware/gpio.h"
 
 // This driver encodes the states of the A and B pins of the rotary encoder

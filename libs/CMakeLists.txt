@@ -1,1 +1,1 @@
-add_subdirectory(driver_rotaryencoder)
+add_subdirectory(driver_rotary_encoder)

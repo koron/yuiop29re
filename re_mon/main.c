@@ -1,7 +1,7 @@
 #include <stdio.h>
 
 #include "pico/stdlib.h"
-#include "driver/rotaryencoder.h"
+#include "driver/rotary_encoder.h"
 
 int main() {
     stdio_init_all();
