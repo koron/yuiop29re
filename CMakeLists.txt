@@ -17,6 +17,7 @@ add_compile_definitions(
 	ROTALY_ENCODER_1_PIN_B=3
 	)
 
+add_subdirectory(libs)
 add_subdirectory(helloworld)
 add_subdirectory(ssd1306_i2c)
 add_subdirectory(gpiomon)
