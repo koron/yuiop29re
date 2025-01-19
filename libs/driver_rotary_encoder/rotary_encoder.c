@@ -39,7 +39,7 @@
 // direction of the rotation is determined by comparing the variable indicating
 // the transition history with the above values.
 
-void rotary_encoder_init(rotary_encoder_t* re, uint a, uint b) {
+void rotary_encoder_init(rotary_encoder_t *re, uint a, uint b) {
     // Setup two GPIO registers for an encoder.
     uint mask = (1 << a) | (1 << b);
     gpio_init_mask(mask);

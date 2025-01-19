@@ -9,6 +9,6 @@ typedef struct {
     uint64_t changedAt;
 } rotary_encoder_t;
 
-void rotary_encoder_init(rotary_encoder_t* re, uint a, uint b);
+void rotary_encoder_init(rotary_encoder_t *re, uint a, uint b);
 
 int8_t rotary_encoder_task(rotary_encoder_t *re, uint64_t now);
