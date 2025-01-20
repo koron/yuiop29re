@@ -5,10 +5,16 @@
 
 #include "pico/stdlib.h"
 
+//////////////////////////////////////////////////////////////////////////////
+// Pre-declarations
+
 static void sm_gpio_init(uint gpio);
 static void sm_scan_switches(switch_matrix_t *sm, uint64_t now);
 static void sm_performance_count(switch_matrix_t *sm, uint64_t now);
 static void sm_set_switch_state(switch_matrix_t *sm, uint64_t now, uint knum, bool on);
+
+//////////////////////////////////////////////////////////////////////////////
+// Public functions
 
 void switch_matrix_init(switch_matrix_t *sm) {
     uint32_t inited_pins = 0;
@@ -63,7 +69,7 @@ __attribute__((weak)) void switch_matrix_suppressed(switch_matrix_t *sm, uint64_
 }
 
 //////////////////////////////////////////////////////////////////////////////
-// private functions
+// Private functions
 
 void sm_gpio_init(uint gpio) {
     gpio_init(gpio);
