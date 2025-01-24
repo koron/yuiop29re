@@ -22,9 +22,5 @@ add_compile_definitions(
 
 add_subdirectory(libs)
 add_subdirectory(tests)
-add_subdirectory(helloworld)
-add_subdirectory(ssd1306_i2c)
-add_subdirectory(gpiomon)
-add_subdirectory(re_mon)
 
 # vim:set ts=8 sts=4 sw=4 tw=0 et:
