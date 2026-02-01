@@ -37,7 +37,7 @@ jobs:
       with:
         name: firmwares
         path: |
-          build/*/*.uf2
-          build/*/*.dis
-          build/*/*.elf
-          build/*/*.elf.map
+          build/**/*.uf2
+          build/**/*.dis
+          build/**/*.elf
+          build/**/*.elf.map
