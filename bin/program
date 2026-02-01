@@ -17,10 +17,17 @@ if [ ! -r "${ELF_FILE}" ] ; then
   exit 2
 fi
 
+# Determine target chip
+target=$(picotool info ${ELF_FILE} | grep 'target chip:' | awk '{print $3}')
+if [[ -z "$target" ]] ; then
+  target=RP2040
+fi
+target="${target,,}"
+
 _OPENOCD="${OPENOCD:-openocd}"
 
 ${_OPENOCD} \
   -f interface/cmsis-dap.cfg \
-  -f target/rp2040.cfg \
+  -f target/"${target}".cfg \
   -c "adapter speed 5000" \
   -c "program ${ELF_FILE} verify reset exit"
