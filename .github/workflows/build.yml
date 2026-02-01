@@ -37,7 +37,11 @@ jobs:
       with:
         name: firmwares
         path: |
-          build/**/*.uf2
-          build/**/*.dis
-          build/**/*.elf
-          build/**/*.elf.map
+          build/rp2040/**/*.dis
+          build/rp2040/**/*.elf
+          build/rp2040/**/*.elf.map
+          build/rp2040/**/*.uf2
+          build/rp2350/**/*.dis
+          build/rp2350/**/*.elf
+          build/rp2350/**/*.elf.map
+          build/rp2350/**/*.uf2
