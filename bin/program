@@ -1,6 +1,7 @@
 #!/bin/bash
 #
-# A script to program a new firmware to RP2040 via RaspberryPi debug probe.
+# A script to program a new firmware to RP2040/RP2350 via RaspberryPi debug
+# probe.
 #
 # USAGE: program {ELF FILE}
 
