@@ -1,5 +1,7 @@
 # YUIOP29RE - DIY keyboard with rotaly encoder
 
+[![Build](https://github.com/koron/yuiop29re/actions/workflows/build.yml/badge.svg)](https://github.com/koron/yuiop29re/actions/workflows/build.yml)
+
 ## Requirements
 
 *   [PICO SDK][picosdk] (v2.1.1)
