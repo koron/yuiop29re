@@ -29,6 +29,8 @@ jobs:
 
     - run: |
         make PICO_PLATFORM=rp2040
+
+    - run: |
         make PICO_PLATFORM=rp2350
 
     - uses: actions/upload-artifact@v6
