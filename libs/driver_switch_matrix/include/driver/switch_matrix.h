@@ -2,7 +2,6 @@
 
 #include <pico/types.h>
 
-
 typedef void (*switch_matrix_changed_cb)(uint64_t when, uint state_index, bool on);
 typedef void (*switch_matrix_suppressed_cb)(uint8_t when, uint state_index, bool on, uint64_t last_changed);
 
