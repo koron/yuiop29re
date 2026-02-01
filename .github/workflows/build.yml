@@ -6,7 +6,15 @@ jobs:
 
   build:
     name: Build
+
+    strategy:
+      matrix:
+        pico_platform:
+        - rp2040
+        - rp2350
+
     runs-on: ubuntu-24.04
+
     env:
       PICO_SDK_PATH: ${{ github.workspace }}/__pico-sdk__
 
@@ -28,14 +36,11 @@ jobs:
         sudo apt install -y cmake gcc-arm-none-eabi gcc g++
 
     - run: |
-        make PICO_PLATFORM=rp2040
-
-    - run: |
-        make PICO_PLATFORM=rp2350
+        make PICO_PLATFORM=${{ matrix.pico_platform }}
 
     - uses: actions/upload-artifact@v6
       with:
-        name: firmwares
+        name: firmwares-${{ matrix.pico_platform }}
         path: |
           build/**/*.dis
           build/**/*.elf
