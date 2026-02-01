@@ -2,8 +2,10 @@
 
 #include <pico/types.h>
 
-typedef void (*switch_matrix_changed_cb)(uint64_t when, uint state_index, bool on);
-typedef void (*switch_matrix_suppressed_cb)(uint8_t when, uint state_index, bool on, uint64_t last_changed);
+typedef struct switch_matrix_s switch_matrix_t;
+
+typedef void (*switch_matrix_changed_cb)(switch_matrix_t *sm, uint64_t when, uint state_index, bool on);
+typedef void (*switch_matrix_suppressed_cb)(switch_matrix_t *sm, uint8_t when, uint state_index, bool on, uint64_t last_changed);
 
 typedef struct {
     uint8_t  p0;
@@ -12,7 +14,7 @@ typedef struct {
     uint64_t last:63;
 } switch_matrix_state_t;
 
-typedef struct {
+struct switch_matrix_s {
     int num;
     switch_matrix_state_t *states;
 
@@ -26,7 +28,7 @@ typedef struct {
     uint64_t debounce_interval;
 
     uint64_t last;
-} switch_matrix_t;
+};
 
 void switch_matrix_init(switch_matrix_t *sm);
 

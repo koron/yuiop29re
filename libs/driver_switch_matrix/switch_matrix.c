@@ -54,18 +54,18 @@ void switch_matrix_task(switch_matrix_t *sm, uint64_t now) {
 
 __attribute__((weak)) void switch_matrix_changed(switch_matrix_t *sm, uint64_t when, uint state_index, bool on) {
     if (sm->changed != NULL) {
-        sm->changed(when, state_index, on);
+        sm->changed(sm, when, state_index, on);
         return;
     }
-    printf("switch_matrix_changed: state_index=%d %-3s when=%llu\n", state_index, on ? "ON" : "OFF", when);
+    printf("switch_matrix_changed: state_index=%-2d %-3s when=%llu\n", state_index, on ? "ON" : "OFF", when);
 }
 
 __attribute__((weak)) void switch_matrix_suppressed(switch_matrix_t *sm, uint64_t when, uint state_index, bool on, uint64_t last_changed) {
     if (sm->suppressed != NULL) {
-        sm->suppressed(when, state_index, on, last_changed);
+        sm->suppressed(sm, when, state_index, on, last_changed);
         return;
     }
-    printf("switch_matrix_suppressed: state_index=%d %s when=%llu last=%llu elapsed=%llu\n", state_index, on ? "ON" : "OFF", when, last_changed, when - last_changed);
+    printf("switch_matrix_suppressed: state_index=%-2d %-3s when=%llu last=%llu elapsed=%llu\n", state_index, on ? "ON" : "OFF", when, last_changed, when - last_changed);
 }
 
 //////////////////////////////////////////////////////////////////////////////

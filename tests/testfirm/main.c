@@ -70,8 +70,8 @@ static int sm_to_led_index[] = {
       24, 25, 26, 27, 28,
 };
 
-static void on_sm_changed(uint64_t when, uint state_index, bool on) {
-    printf("switch_matrix_changed: state_index=%d %-3s when=%llu\n", state_index, on ? "ON" : "OFF", when);
+static void on_sm_changed(switch_matrix_t *sm, uint64_t when, uint state_index, bool on) {
+    printf("sm%d_changed: state_index=%-2d %-3s when=%llu\n", (int)sm->user, state_index, on ? "ON" : "OFF", when);
     if (state_index < count_of(sm_to_led_index)) {
         int led_index = sm_to_led_index[state_index];
         if (on) {
@@ -106,7 +106,7 @@ int main() {
         int delta = rotary_encoder_task(&re1, now);
         if (delta != 0) {
             re_sum = update_re_count(re_sum, delta, ROTALY_ENCODER_1_COUNT);
-            printf("rotary_encoder_changed: delta=%-2d sum=%-2d when=%llu\n", delta, re_sum, now);
+            printf("re1_changed: delta=%-2d sum=%-2d when=%llu\n", delta, re_sum, now);
         }
 
         switch_matrix_task(&sm1, now);
