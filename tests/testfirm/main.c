@@ -153,14 +153,14 @@ typedef struct {
     uint16_t r, g, b;
 } color_t;
 
-const uint64_t matmax = (1 << 21) - 1;
+const uint64_t frac_base_max = (1 << 22) - 1;
 
-static color_t get_matrix_color(color_t *c, led_pos_t *p, uint64_t now) {
-    const uint16_t level = 65535;
-    float hue = fmod((float)(now & matmax) / (float)matmax + p->x, 1.0) * 6.0;
-    uint16_t phase = (uint16_t)hue;
-    uint16_t v = (uint16_t)(fmod(hue, 1.0) * level);
-    switch (phase % 6) {
+static void get_matrix_color(void *user, ws2812_color_t *c, led_pos_t *p, uint64_t now) {
+    const uint8_t level = 255;
+    float frac = (float)(now & frac_base_max) / (float)frac_base_max;
+    float hue = fmod(frac + p->x / 8.0, 1.0) * 6.0;
+    uint8_t v = (uint8_t)(fmod(hue, 1.0) * level);
+    switch (((int)hue) % 6) {
         case 0:
             c->r = level;
             c->g = v;
@@ -200,10 +200,10 @@ void led_matrix_task(uint64_t now) {
         return;
     }
     last = now;
+    ws2812_array_dirty = true;
+    memset(ws2812_array_states, 0, sizeof(ws2812_array_states));
     for (int i = 0; i < count_of(led_positions); i++) {
-        color_t c = {0};
-        get_matrix_color(&c, &led_positions[i], now);
-        ws2812_array_set_rgb(i, c.r >> 8, c.g >> 8, c.b >> 8);
+        get_matrix_color(NULL, &ws2812_array_states[i].rgb, &led_positions[i], now);
     }
 }
 
