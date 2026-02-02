@@ -1,9 +1,13 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "pico/stdlib.h"
 #include "driver/rotary_encoder.h"
 #include "driver/switch_matrix.h"
 #include "driver/ws2812_array.h"
+
+#include "hardware/i2c.h"
+#include "ssd1306.h"
 
 enum {
     ROW1 = 14,
@@ -82,6 +86,45 @@ static void on_sm_changed(switch_matrix_t *sm, uint64_t when, uint state_index, 
     }
 }
 
+static uint8_t oled_buf[SSD1306_BUF_LEN] = {0};
+
+struct render_area oled_frame = {
+    .start_col = 0,
+    .end_col = SSD1306_WIDTH - 1,
+    .start_page = 0,
+    .end_page = SSD1306_NUM_PAGES - 1
+};
+
+static void oled_render() {
+    render(oled_buf, &oled_frame);
+};
+
+static void oled_task(uint64_t now) {
+    static int mode = 0;
+    static uint64_t wait = 0;
+    if (wait > 0 && wait > now) {
+        return;
+    }
+    wait = 0;
+    switch (mode) {
+        case 0:
+            SSD1306_send_cmd(SSD1306_SET_ALL_ON);
+            mode = 1;
+            wait = now + 500 * 1000;
+            break;
+        case 1:
+            static int count_1 = 0;
+            SSD1306_send_cmd(SSD1306_SET_ENTIRE_ON);
+            if (++count_1 >= 3) {
+                mode = 2;
+                break;
+            }
+            mode = 0;
+            wait = now + 500 * 1000;
+            break;
+    }
+}
+
 int main() {
     stdio_init_all();
     printf("\nYUIOP29RE: testfirm\n");
@@ -100,6 +143,13 @@ int main() {
 
     ws2812_array_init();
 
+    i2c_init(i2c_default, SSD1306_I2C_CLK * 1000);
+    gpio_set_function(PICO_DEFAULT_I2C_SDA_PIN, GPIO_FUNC_I2C);
+    gpio_set_function(PICO_DEFAULT_I2C_SCL_PIN, GPIO_FUNC_I2C);
+    gpio_pull_up(PICO_DEFAULT_I2C_SDA_PIN);
+    gpio_pull_up(PICO_DEFAULT_I2C_SCL_PIN);
+    SSD1306_init();
+
     while(true) {
         uint64_t now = time_us_64();
 
@@ -112,6 +162,8 @@ int main() {
         switch_matrix_task(&sm1, now);
 
         ws2812_array_task(now);
+
+        oled_task(now);
 
         tight_loop_contents();
     }
