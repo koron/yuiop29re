@@ -149,48 +149,27 @@ static led_pos_t led_positions[] = {
     { 0.3, 0.0 }, { 0.5, 0.0 }, { 0.7, 0.0 }, { 0.9, 0.0 },
 };
 
-typedef struct {
-    uint16_t r, g, b;
-} color_t;
-
 const uint64_t frac_base_max = (1 << 22) - 1;
 
-static void get_matrix_color(void *user, ws2812_color_t *c, led_pos_t *p, uint64_t now) {
-    const uint8_t level = 255;
-    float frac = (float)(now & frac_base_max) / (float)frac_base_max;
-    float hue = fmod(frac + p->x / 8.0, 1.0) * 6.0;
-    uint8_t v = (uint8_t)(fmod(hue, 1.0) * level);
-    switch (((int)hue) % 6) {
-        case 0:
-            c->r = level;
-            c->g = v;
-            c->b = 0;
-            break;
-        case 1:
-            c->r = level - v;
-            c->g = level;
-            c->b = 0;
-            break;
-        case 2:
-            c->r = 0;
-            c->g = level;
-            c->b = v;
-            break;
-        case 3:
-            c->r = 0;
-            c->g = level - v;
-            c->b = level;
-            break;
-        case 4:
-            c->r = v;
-            c->g = 0;
-            c->b = level;
-            break;
-        case 5:
-            c->r = level;
-            c->g = 0;
-            c->b = level - v;
-            break;
+typedef void (*led_matrix_get_color_cb)(
+        void *user,
+        ws2812_color_t *c,
+        led_pos_t *pos,
+        uint64_t now);
+
+typedef struct {
+    led_matrix_get_color_cb     fn;
+    void                        *data;
+} led_matrix_get_color_t;
+
+led_matrix_get_color_t led_matrix_get_color = {
+    .fn   = NULL,
+    .data = NULL
+};
+
+void led_matrix_get_color_call(led_matrix_get_color_t *getter, ws2812_color_t *c, led_pos_t *pos, uint64_t now) {
+    if (getter != NULL && getter->fn != NULL) {
+        getter->fn(getter->data, c, pos, now);
     }
 }
 
@@ -203,7 +182,29 @@ void led_matrix_task(uint64_t now) {
     ws2812_array_dirty = true;
     memset(ws2812_array_states, 0, sizeof(ws2812_array_states));
     for (int i = 0; i < count_of(led_positions); i++) {
-        get_matrix_color(NULL, &ws2812_array_states[i].rgb, &led_positions[i], now);
+        led_matrix_get_color_call(&led_matrix_get_color, &ws2812_array_states[i].rgb, &led_positions[i], now);
+    }
+}
+
+static void add_color(ws2812_color_t *c, uint8_t r, uint8_t g, uint8_t b) {
+    c->r = MAX(c->r, r);
+    c->g = MAX(c->g, g);
+    c->b = MAX(c->b, b);
+}
+
+static void get_vertical_rainbow_color(void *user, ws2812_color_t *c, led_pos_t *pos, uint64_t now) {
+    const uint8_t L = 255;
+    float frac = (float)(now & frac_base_max) / (float)frac_base_max;
+    float hue = fmod(frac + pos->x / 8.0, 1.0) * 6.0;
+    uint8_t v = (uint8_t)(fmod(hue, 1.0) * L);
+    uint8_t L_v = L - v;
+    switch (((int)hue) % 6) {
+        case 0: add_color(c, L,   v,   0  ); break;
+        case 1: add_color(c, L_v, L,   0  ); break;
+        case 2: add_color(c, 0,   L,   v  ); break;
+        case 3: add_color(c, 0,   L_v, L  ); break;
+        case 4: add_color(c, v,   0,   L  ); break;
+        case 5: add_color(c, L,   0,   L_v); break;
     }
 }
 
@@ -224,6 +225,8 @@ int main() {
     switch_matrix_init(&sm1);
 
     ws2812_array_init();
+
+    led_matrix_get_color.fn = get_vertical_rainbow_color;
 
     oled_init();
 
