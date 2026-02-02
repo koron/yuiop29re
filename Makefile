@@ -4,7 +4,7 @@ BUILD_DIR=build/$(PICO_PLATFORM)
 
 .PHONY: build
 build:
-	cmake -B $(BUILD_DIR)
+	cmake -B $(BUILD_DIR) -G Ninja
 	cmake --build $(BUILD_DIR)
 
 .PHONY: clean
