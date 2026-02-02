@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 #include "pico/stdlib.h"
 #include "driver/rotary_encoder.h"
@@ -125,6 +126,78 @@ static void oled_task(uint64_t now) {
     }
 }
 
+typedef struct {
+    float x;
+    float y;
+} led_pos_t;
+
+static led_pos_t led_positions[] = {
+    { 0.0, 0.8 }, { 0.2, 0.8 }, { 0.4, 0.8 }, { 0.6, 0.8 }, { 0.8, 0.8 },
+    { 1.0, 0.8 }, { 1.0, 0.6 }, { 0.8, 0.6 }, { 0.6, 0.6 }, { 0.4, 0.6 },
+    { 0.2, 0.6 }, { 0.0, 0.6 }, { 0.0, 0.4 }, { 0.2, 0.4 }, { 0.4, 0.4 },
+    { 0.6, 0.4 }, { 0.8, 0.4 }, { 1.0, 0.4 }, { 1.0, 0.2 }, { 0.8, 0.2 },
+    { 0.6, 0.2 }, { 0.4, 0.2 }, { 0.2, 0.2 }, { 0.0, 0.2 }, { 0.1, 0.0 },
+    { 0.3, 0.0 }, { 0.5, 0.0 }, { 0.7, 0.0 }, { 0.9, 0.0 },
+};
+
+typedef struct {
+    uint16_t r, g, b;
+} color_t;
+
+const uint64_t matmax = (1 << 21) - 1;
+
+static color_t get_matrix_color(color_t *c, led_pos_t *p, uint64_t now) {
+    const uint16_t level = 65535;
+    float hue = fmod((float)(now & matmax) / (float)matmax + p->x, 1.0) * 6.0;
+    uint16_t phase = (uint16_t)hue;
+    uint16_t v = (uint16_t)(fmod(hue, 1.0) * level);
+    switch (phase % 6) {
+        case 0:
+            c->r = level;
+            c->g = v;
+            c->b = 0;
+            break;
+        case 1:
+            c->r = level - v;
+            c->g = level;
+            c->b = 0;
+            break;
+        case 2:
+            c->r = 0;
+            c->g = level;
+            c->b = v;
+            break;
+        case 3:
+            c->r = 0;
+            c->g = level - v;
+            c->b = level;
+            break;
+        case 4:
+            c->r = v;
+            c->g = 0;
+            c->b = level;
+            break;
+        case 5:
+            c->r = level;
+            c->g = 0;
+            c->b = level - v;
+            break;
+    }
+}
+
+void led_matrix_task(uint64_t now) {
+    static uint64_t last = 0;
+    if (now - last < 10000) {
+        return;
+    }
+    last = now;
+    for (int i = 0; i < count_of(led_positions); i++) {
+        color_t c = {0};
+        get_matrix_color(&c, &led_positions[i], now);
+        ws2812_array_set_rgb(i, c.r >> 8, c.g >> 8, c.b >> 8);
+    }
+}
+
 int main() {
     stdio_init_all();
     printf("\nYUIOP29RE: testfirm\n");
@@ -160,6 +233,8 @@ int main() {
         }
 
         switch_matrix_task(&sm1, now);
+
+        led_matrix_task(now);
 
         ws2812_array_task(now);
 
