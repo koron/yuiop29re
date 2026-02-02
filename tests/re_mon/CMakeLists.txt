@@ -7,6 +7,8 @@ target_link_libraries(re_mon
 	pico_bootsel_via_double_reset
 	pico_stdlib
 	driver_rotary_encoder
-	)
+)
 
 pico_add_extra_outputs(re_mon)
+
+# vim:set ts=4 sts=4 sw=4 tw=0 noet:

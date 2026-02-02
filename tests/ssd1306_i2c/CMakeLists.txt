@@ -11,3 +11,5 @@ target_link_libraries(ssd1306_i2c
 
 # create map/bin/hex file etc.
 pico_add_extra_outputs(ssd1306_i2c)
+
+# vim:set ts=4 sts=4 sw=4 tw=0 noet:

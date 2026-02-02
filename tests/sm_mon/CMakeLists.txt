@@ -7,6 +7,8 @@ target_link_libraries(sm_mon
 	pico_bootsel_via_double_reset
 	pico_stdlib
 	driver_switch_matrix
-	)
+)
 
 pico_add_extra_outputs(sm_mon)
+
+# vim:set ts=4 sts=4 sw=4 tw=0 noet:

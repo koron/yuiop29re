@@ -16,3 +16,5 @@ target_link_libraries(testfirm
 )
 
 pico_add_extra_outputs(testfirm)
+
+# vim:set ts=4 sts=4 sw=4 tw=0 noet:

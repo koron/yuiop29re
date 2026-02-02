@@ -19,9 +19,9 @@ add_compile_definitions(
 	WS2812_ARRAY_NUM=29
 	WS2812_ARRAY_PIN=0
 	WS2812_ARRAY_PIO=pio0
-	)
+)
 
 add_subdirectory(libs)
 add_subdirectory(tests)
 
-# vim:set ts=8 sts=4 sw=4 tw=0 noet:
+# vim:set ts=4 sts=4 sw=4 tw=0 noet:
