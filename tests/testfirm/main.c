@@ -96,9 +96,18 @@ struct render_area oled_frame = {
     .end_page = SSD1306_NUM_PAGES - 1
 };
 
-static void oled_render() {
+static void oled_init() {
+    i2c_init(i2c_default, SSD1306_I2C_CLK * 1000);
+    gpio_set_function(PICO_DEFAULT_I2C_SDA_PIN, GPIO_FUNC_I2C);
+    gpio_set_function(PICO_DEFAULT_I2C_SCL_PIN, GPIO_FUNC_I2C);
+    gpio_pull_up(PICO_DEFAULT_I2C_SDA_PIN);
+    gpio_pull_up(PICO_DEFAULT_I2C_SCL_PIN);
+    SSD1306_init();
+
+    calc_render_area_buflen(&oled_frame);
+    memset(oled_buf, 0, SSD1306_BUF_LEN);
     render(oled_buf, &oled_frame);
-};
+}
 
 static void oled_task(uint64_t now) {
     static int mode = 0;
@@ -216,12 +225,7 @@ int main() {
 
     ws2812_array_init();
 
-    i2c_init(i2c_default, SSD1306_I2C_CLK * 1000);
-    gpio_set_function(PICO_DEFAULT_I2C_SDA_PIN, GPIO_FUNC_I2C);
-    gpio_set_function(PICO_DEFAULT_I2C_SCL_PIN, GPIO_FUNC_I2C);
-    gpio_pull_up(PICO_DEFAULT_I2C_SDA_PIN);
-    gpio_pull_up(PICO_DEFAULT_I2C_SCL_PIN);
-    SSD1306_init();
+    oled_init();
 
     while(true) {
         uint64_t now = time_us_64();
