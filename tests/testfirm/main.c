@@ -67,26 +67,6 @@ static int update_re_count(int sum, int delta, int max_count) {
     return (sum + delta + max_count) % max_count;
 }
 
-static int sm_to_led_index[] = {
-     0,  1,  2,  3,  4,  5,
-    11, 10,  9,  8,  7,  6,
-    12, 13, 14, 15, 16, 17,
-    23, 22, 21, 20, 19, 18,
-      24, 25, 26, 27, 28,
-};
-
-static void on_sm_changed(switch_matrix_t *sm, uint64_t when, uint state_index, bool on) {
-    printf("sm%d_changed: state_index=%-2d %-3s when=%llu\n", (int)sm->user, state_index, on ? "ON" : "OFF", when);
-    if (state_index < count_of(sm_to_led_index)) {
-        int led_index = sm_to_led_index[state_index];
-        if (on) {
-            ws2812_array_set_rgb(led_index, 255, 255, 255);
-        } else {
-            ws2812_array_set_rgb(led_index, 0, 0, 0);
-        }
-    }
-}
-
 static uint8_t oled_buf[SSD1306_BUF_LEN] = {0};
 
 struct render_area oled_frame = {
@@ -151,11 +131,7 @@ static led_pos_t led_positions[] = {
 
 const uint64_t frac_base_max = (1 << 22) - 1;
 
-typedef void (*led_matrix_get_color_cb)(
-        void *user,
-        ws2812_color_t *c,
-        led_pos_t *pos,
-        uint64_t now);
+typedef void (*led_matrix_get_color_cb)(void *data, ws2812_color_t *c, led_pos_t *pos, uint64_t now);
 
 typedef struct {
     led_matrix_get_color_cb     fn;
@@ -192,7 +168,7 @@ static void add_color(ws2812_color_t *c, uint8_t r, uint8_t g, uint8_t b) {
     c->b = MAX(c->b, b);
 }
 
-static void get_vertical_rainbow_color(void *user, ws2812_color_t *c, led_pos_t *pos, uint64_t now) {
+static void get_vertical_rainbow_color(void *data, ws2812_color_t *c, led_pos_t *pos, uint64_t now) {
     const uint8_t L = 255;
     float frac = (float)(now & frac_base_max) / (float)frac_base_max;
     float hue = fmod(frac + pos->x / 8.0, 1.0) * 6.0;
@@ -205,6 +181,76 @@ static void get_vertical_rainbow_color(void *user, ws2812_color_t *c, led_pos_t 
         case 3: add_color(c, 0,   L_v, L  ); break;
         case 4: add_color(c, v,   0,   L  ); break;
         case 5: add_color(c, L,   0,   L_v); break;
+    }
+}
+
+#define GETTERS_MAX 16
+
+typedef struct {
+    led_matrix_get_color_t colors[GETTERS_MAX];
+} getters_t;
+
+static getters_t color_getters = {0};
+
+void color_getters_get_color(void *data, ws2812_color_t *c, led_pos_t *pos, uint64_t now) {
+    getters_t *p = (getters_t*)data;
+    for (int i = 0; i < GETTERS_MAX; i++) {
+        led_matrix_get_color_call(&p->colors[i], c, pos, now);
+    }
+}
+
+int color_provider_has(led_matrix_get_color_cb fn, void *data) {
+    for (int i = 0; i < GETTERS_MAX; i++) {
+        if (color_getters.colors[i].fn == fn && color_getters.colors[i].data == data) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+int color_provider_add(led_matrix_get_color_cb fn, void *data) {
+    for (int i = 0; i < GETTERS_MAX; i++) {
+        if (color_getters.colors[i].fn == NULL) {
+            color_getters.colors[i].fn   = fn;
+            color_getters.colors[i].data = data;
+            return i;
+        }
+    }
+    return -1;
+}
+
+void color_provider_remove(int i) {
+    if (i >= 0 && i < GETTERS_MAX) {
+        color_getters.colors[i].fn   = NULL;
+        color_getters.colors[i].data = NULL;
+    }
+}
+
+static int sm_to_led_index[] = {
+     0,  1,  2,  3,  4,  5,
+    11, 10,  9,  8,  7,  6,
+    12, 13, 14, 15, 16, 17,
+    23, 22, 21, 20, 19, 18,
+      24, 25, 26, 27, 28,
+};
+
+static void on_sm_changed(switch_matrix_t *sm, uint64_t when, uint state_index, bool on) {
+    printf("sm%d_changed: state_index=%-2d %-3s when=%llu\n", (int)sm->user, state_index, on ? "ON" : "OFF", when);
+    if (state_index < count_of(sm_to_led_index)) {
+        int led_index = sm_to_led_index[state_index];
+        if (on) {
+            ws2812_array_set_rgb(led_index, 255, 255, 255);
+        } else {
+            ws2812_array_set_rgb(led_index, 0, 0, 0);
+        }
+    }
+    if (state_index == 29 && on) {
+        int i = color_provider_has(get_vertical_rainbow_color, NULL);
+        if (i < 0) {
+            color_provider_add(get_vertical_rainbow_color, NULL);
+        } else {
+            color_provider_remove(i);
+        }
     }
 }
 
@@ -226,7 +272,9 @@ int main() {
 
     ws2812_array_init();
 
-    led_matrix_get_color.fn = get_vertical_rainbow_color;
+    led_matrix_get_color.data = &color_getters;
+    led_matrix_get_color.fn = color_getters_get_color;
+    //get_vertical_rainbow_color;
 
     oled_init();
 
