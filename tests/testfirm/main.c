@@ -131,7 +131,7 @@ static led_pos_t led_positions[] = {
 
 const uint64_t frac_base_max = (1 << 22) - 1;
 
-typedef void (*led_matrix_get_color_cb)(void *data, ws2812_color_t *c, led_pos_t *pos, uint64_t now);
+typedef void (*led_matrix_get_color_cb)(void *data, int idx, ws2812_color_t *c, led_pos_t *pos, uint64_t now);
 
 typedef struct {
     led_matrix_get_color_cb     fn;
@@ -143,9 +143,9 @@ led_matrix_get_color_t led_matrix_get_color = {
     .data = NULL
 };
 
-void led_matrix_get_color_call(led_matrix_get_color_t *getter, ws2812_color_t *c, led_pos_t *pos, uint64_t now) {
+void led_matrix_get_color_call(led_matrix_get_color_t *getter, int idx, ws2812_color_t *c, led_pos_t *pos, uint64_t now) {
     if (getter != NULL && getter->fn != NULL) {
-        getter->fn(getter->data, c, pos, now);
+        getter->fn(getter->data, idx, c, pos, now);
     }
 }
 
@@ -158,7 +158,7 @@ void led_matrix_task(uint64_t now) {
     ws2812_array_dirty = true;
     memset(ws2812_array_states, 0, sizeof(ws2812_array_states));
     for (int i = 0; i < count_of(led_positions); i++) {
-        led_matrix_get_color_call(&led_matrix_get_color, &ws2812_array_states[i].rgb, &led_positions[i], now);
+        led_matrix_get_color_call(&led_matrix_get_color, i, &ws2812_array_states[i].rgb, &led_positions[i], now);
     }
 }
 
@@ -168,7 +168,7 @@ static void add_color(ws2812_color_t *c, uint8_t r, uint8_t g, uint8_t b) {
     c->b = MAX(c->b, b);
 }
 
-static void get_vertical_rainbow_color(void *data, ws2812_color_t *c, led_pos_t *pos, uint64_t now) {
+static void get_vertical_rainbow_color(void *data, int idx, ws2812_color_t *c, led_pos_t *pos, uint64_t now) {
     const uint8_t L = 255;
     float frac = (float)(now & frac_base_max) / (float)frac_base_max;
     float hue = fmod(frac + pos->x / 8.0, 1.0) * 6.0;
@@ -192,10 +192,10 @@ typedef struct {
 
 static getters_t color_getters = {0};
 
-void color_getters_get_color(void *data, ws2812_color_t *c, led_pos_t *pos, uint64_t now) {
+void color_getters_get_color(void *data, int idx, ws2812_color_t *c, led_pos_t *pos, uint64_t now) {
     getters_t *p = (getters_t*)data;
     for (int i = 0; i < GETTERS_MAX; i++) {
-        led_matrix_get_color_call(&p->colors[i], c, pos, now);
+        led_matrix_get_color_call(&p->colors[i], idx, c, pos, now);
     }
 }
 
@@ -226,6 +226,36 @@ void color_provider_remove(int i) {
     }
 }
 
+static float time_reduction(float x, float t) {
+    if (x >= 1.0)
+        return 1.0;
+    float denom = 1.0 - t;
+    if (denom < 1e-7)
+        denom = 1e-7;
+    return powf(x, 1.0 / denom);
+}
+
+typedef struct {
+    int led_index;
+    uint64_t start;
+} push_effect_t;
+
+push_effect_t push_effects[29] = {0};
+
+static void light_effect_on_switch_press(void *data, int idx, ws2812_color_t *c, led_pos_t *pos, uint64_t now) {
+    push_effect_t *p = (push_effect_t *)data;
+    led_pos_t *center = &led_positions[p->led_index];
+    float dx = pos->x - center->x;
+    float dy = pos->y - center->y;
+    float r = sqrt(dx * dx + dy * dy);
+    float t = MIN((float)(now - p->start) / 1e6, 1);
+    float f = time_reduction(powf(0.2, r / 0.2), t);
+    uint8_t v = (uint8_t)(255 * f);
+    if (v > 0) {
+        add_color(c, v, v, v);
+    }
+}
+
 static int sm_to_led_index[] = {
      0,  1,  2,  3,  4,  5,
     11, 10,  9,  8,  7,  6,
@@ -239,9 +269,14 @@ static void on_sm_changed(switch_matrix_t *sm, uint64_t when, uint state_index, 
     if (state_index < count_of(sm_to_led_index)) {
         int led_index = sm_to_led_index[state_index];
         if (on) {
-            ws2812_array_set_rgb(led_index, 255, 255, 255);
+            push_effect_t effect = { .led_index=led_index, .start=when };
+            push_effects[led_index] = effect;
+            color_provider_add(light_effect_on_switch_press, (void *)&push_effects[led_index]);
         } else {
-            ws2812_array_set_rgb(led_index, 0, 0, 0);
+            int i = color_provider_has(light_effect_on_switch_press, (void *)&push_effects[led_index]);
+            if (i >= 0) {
+                color_provider_remove(i);
+            }
         }
     }
     if (state_index == 29 && on) {
