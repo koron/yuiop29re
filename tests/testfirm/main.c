@@ -63,9 +63,7 @@ static switch_matrix_state_t sm_states[] = {
     { ROW5, COL1 },
 };
 
-static int update_re_count(int sum, int delta, int max_count) {
-    return (sum + delta + max_count) % max_count;
-}
+static int re_sum = 0;
 
 static uint8_t oled_buf[SSD1306_BUF_LEN] = {0};
 
@@ -92,6 +90,9 @@ static void oled_init() {
 static void oled_task(uint64_t now) {
     static int mode = 0;
     static uint64_t wait = 0;
+    static int last_re_sum = -1;
+    static char re_msg[30] = {0};
+
     if (wait > 0 && wait > now) {
         return;
     }
@@ -111,6 +112,18 @@ static void oled_task(uint64_t now) {
             }
             mode = 0;
             wait = now + 500 * 1000;
+            break;
+        case 2:
+            if (last_re_sum == re_sum) {
+                break;
+            }
+            last_re_sum = re_sum;
+            snprintf(re_msg, sizeof(re_msg), "RE sum %-2d", re_sum);
+            WriteString(oled_buf, 0, 0, re_msg);
+            float sec = (float)now / 1000000;
+            snprintf(re_msg, sizeof(re_msg), "    at %.2f", sec);
+            WriteString(oled_buf, 0, 9, re_msg);
+            render(oled_buf, &oled_frame);
             break;
     }
 }
@@ -289,13 +302,21 @@ static void on_sm_changed(switch_matrix_t *sm, uint64_t when, uint state_index, 
     }
 }
 
+static int update_re_count(int sum, int delta, int max_count) {
+    return (sum + delta + max_count) % max_count;
+}
+
+static void on_re_chnaged(rotary_encoder_t *re, int delta, uint64_t when) {
+    re_sum = update_re_count(re_sum, delta, ROTALY_ENCODER_1_COUNT);
+    printf("re1_changed: delta=%-2d sum=%-2d when=%llu\n", delta, re_sum, when);
+}
+
 int main() {
     stdio_init_all();
     printf("\nYUIOP29RE: testfirm\n");
 
     rotary_encoder_t re1;
     rotary_encoder_init(&re1, ROTALY_ENCODER_1_PIN_A, ROTALY_ENCODER_1_PIN_B);
-    int re_sum = 0;
 
     switch_matrix_t sm1 = {
         .num     = count_of(sm_states),
@@ -318,8 +339,7 @@ int main() {
 
         int delta = rotary_encoder_task(&re1, now);
         if (delta != 0) {
-            re_sum = update_re_count(re_sum, delta, ROTALY_ENCODER_1_COUNT);
-            printf("re1_changed: delta=%-2d sum=%-2d when=%llu\n", delta, re_sum, now);
+            on_re_chnaged(&re1, delta, now);
         }
 
         switch_matrix_task(&sm1, now);
