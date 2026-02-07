@@ -162,6 +162,8 @@ void led_matrix_get_color_call(led_matrix_get_color_t *getter, int idx, ws2812_c
     }
 }
 
+static void add_color(ws2812_color_t *c, uint8_t r, uint8_t g, uint8_t b);
+
 static void get_white_color(void *data, int idx, ws2812_color_t *c, led_pos_t *pos, uint64_t now) {
     add_color(c, 255, 255, 255);
 }
