@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "driver/ws2812_array.h"
 
 #include "pico/sem.h"
@@ -8,6 +10,7 @@
 bool ws2812_array_dirty = false;
 
 ws2812_state_t ws2812_array_states[WS2812_ARRAY_NUM] = {0};
+static ws2812_state_t sendbuf[WS2812_ARRAY_NUM] = {0};
 
 // reset delay for NeoPixel should be longer than 80us
 static const uint resetdelay_us = 100;
@@ -74,6 +77,9 @@ bool ws2812_array_task(uint64_t now) {
         return false;
     }
     ws2812_array_dirty = false;
-    dma_channel_set_read_addr(dma_chan, ws2812_array_states, true);
+    // Copy the DMA target to the send buffer to protect it from being
+    // overwritten.
+    memcpy(sendbuf, ws2812_array_states, sizeof(sendbuf));
+    dma_channel_set_read_addr(dma_chan, sendbuf, true);
     return true;
 }
