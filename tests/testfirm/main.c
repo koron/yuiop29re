@@ -162,6 +162,20 @@ void led_matrix_get_color_call(led_matrix_get_color_t *getter, int idx, ws2812_c
     }
 }
 
+static void get_white_color(void *data, int idx, ws2812_color_t *c, led_pos_t *pos, uint64_t now) {
+    add_color(c, 255, 255, 255);
+}
+
+static uint8_t muldiv8_16(uint8_t v, uint16_t mul, uint16_t div) {
+    return (uint8_t)((uint16_t)v * mul / div);
+}
+
+static void ws2812_color_cap(ws2812_color_t *c, uint16_t mul, uint16_t div) {
+    c->r = muldiv8_16(c->r, mul, div);
+    c->g = muldiv8_16(c->g, mul, div);
+    c->b = muldiv8_16(c->b, mul, div);
+}
+
 void led_matrix_task(uint64_t now) {
     static uint64_t last = 0;
     if (now - last < 10000) {
@@ -172,6 +186,7 @@ void led_matrix_task(uint64_t now) {
     memset(ws2812_array_states, 0, sizeof(ws2812_array_states));
     for (int i = 0; i < count_of(led_positions); i++) {
         led_matrix_get_color_call(&led_matrix_get_color, i, &ws2812_array_states[i].rgb, &led_positions[i], now);
+        ws2812_color_cap(&ws2812_array_states[i].rgb, 7, 10);
     }
 }
 
@@ -197,7 +212,7 @@ static void get_vertical_rainbow_color(void *data, int idx, ws2812_color_t *c, l
     }
 }
 
-#define GETTERS_MAX 16
+#define GETTERS_MAX 30
 
 typedef struct {
     led_matrix_get_color_t colors[GETTERS_MAX];
@@ -281,6 +296,7 @@ static void on_sm_changed(switch_matrix_t *sm, uint64_t when, uint state_index, 
     printf("sm%d_changed: state_index=%-2d %-3s when=%llu\n", (int)sm->user, state_index, on ? "ON" : "OFF", when);
     if (state_index < count_of(sm_to_led_index)) {
         int led_index = sm_to_led_index[state_index];
+#if 0
         if (on) {
             push_effect_t effect = { .led_index=led_index, .start=when };
             push_effects[led_index] = effect;
@@ -291,6 +307,18 @@ static void on_sm_changed(switch_matrix_t *sm, uint64_t when, uint state_index, 
                 color_provider_remove(i);
             }
         }
+#else
+        if (on) {
+            int i = color_provider_has(light_effect_on_switch_press, (void *)&push_effects[led_index]);
+            if (i >= 0) {
+                color_provider_remove(i);
+            } else {
+                push_effect_t effect = { .led_index=led_index, .start=when };
+                push_effects[led_index] = effect;
+                color_provider_add(light_effect_on_switch_press, (void *)&push_effects[led_index]);
+            }
+        }
+#endif
     }
     if (state_index == 29 && on) {
         int i = color_provider_has(get_vertical_rainbow_color, NULL);
@@ -330,7 +358,6 @@ int main() {
 
     led_matrix_get_color.data = &color_getters;
     led_matrix_get_color.fn = color_getters_get_color;
-    //get_vertical_rainbow_color;
 
     oled_init();
 
