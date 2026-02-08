@@ -66,21 +66,27 @@ int8_t rotary_encoder_task(rotary_encoder_t *re, uint64_t now) {
     if (word == (re->history & 0x03) || now - re->changedAt < 250) {
         return 0;
     }
-    //printf("  history=%02X word=%X\n", re->history, word);
-    int8_t out = 0;
+    int8_t delta = 0;
     if (word == 0) {
-        switch (re->history) {
-            case 0x1e: /* 0b00_01_11_10 + 0b00 */
+        switch (re->history & 0x0f) {
+            case 0x06: // 0b??_??_01_10
+            case 0x07: // 0b??_??_01_11
+            case 0x0e: // 0b??_??_11_10
                 // Detected a clockwise rotation.
-                out = 1;
+                delta = 1;
                 break;
-            case 0x2d: /* 0b00_10_11_01 + 0b00 */
+            case 0x09: // 0b??_??_10_01
+            case 0x0b: // 0b??_??_10_11
+            case 0x0d: // 0b??_??_11_01
                 // Detected a counter clockwise rotation.
-                out = -1;
+                delta = -1;
                 break;
         }
     }
     re->history = re->history << 2 | word;
     re->changedAt = now;
-    return out;
+    if (delta != 0 && re->changed != NULL) {
+        re->changed(re, now, delta);
+    }
+    return delta;
 }

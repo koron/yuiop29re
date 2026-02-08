@@ -336,7 +336,7 @@ static int update_re_count(int sum, int delta, int max_count) {
     return (sum + delta + max_count) % max_count;
 }
 
-static void on_re_chnaged(rotary_encoder_t *re, int delta, uint64_t when) {
+static void on_re_changed(rotary_encoder_t *re, uint64_t when, int8_t delta) {
     re_sum = update_re_count(re_sum, delta, ROTALY_ENCODER_1_COUNT);
     printf("re1_changed: delta=%-2d sum=%-2d when=%llu\n", delta, re_sum, when);
 }
@@ -345,7 +345,10 @@ int main() {
     stdio_init_all();
     printf("\nYUIOP29RE: testfirm\n");
 
-    rotary_encoder_t re1;
+    rotary_encoder_t re1 = {
+        .user    = (void *)0,
+        .changed = on_re_changed,
+    };
     rotary_encoder_init(&re1, ROTALY_ENCODER_1_PIN_A, ROTALY_ENCODER_1_PIN_B);
 
     switch_matrix_t sm1 = {
@@ -366,10 +369,7 @@ int main() {
     while(true) {
         uint64_t now = time_us_64();
 
-        int delta = rotary_encoder_task(&re1, now);
-        if (delta != 0) {
-            on_re_chnaged(&re1, delta, now);
-        }
+        rotary_encoder_task(&re1, now);
 
         switch_matrix_task(&sm1, now);
 
