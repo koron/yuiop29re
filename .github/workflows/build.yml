@@ -51,6 +51,8 @@ jobs:
         sudo apt install -y cmake ninja-build gcc-arm-none-eabi gcc g++
 
     - name: Configure the build
+      env:
+        PICO_PLATFORM: ${{ matrix.pico_platform }}
       run: |
         cmake -B build -G Ninja \
           -Dpicotool_DIR=${{ github.workspace }}/__picotool__/picotool
