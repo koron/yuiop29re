@@ -4,7 +4,7 @@
 
 ## Requirements
 
-*   [PICO SDK][picosdk] (v2.1.1)
+*   [PICO SDK][picosdk] (v2.2.0)
     * cmake
     * compiler or so
 *   [picotool][picotool]
