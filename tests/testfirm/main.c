@@ -1,4 +1,4 @@
-#define PERFCOUNT_LED_MATRIX_TASK       1
+#define PERFCOUNT_LED_MATRIX_TASK       0
 #define FEATURE_LED_WHILE_PRESSING      0
 #define FEATURE_RAINBOW                 1
 
@@ -172,16 +172,6 @@ static void get_white_color(void *data, int idx, ws2812_color_t *c, led_pos_t *p
     add_color(c, 255, 255, 255);
 }
 
-static uint8_t muldiv8_16(uint8_t v, uint16_t mul, uint16_t div) {
-    return (uint8_t)((uint16_t)v * mul / div);
-}
-
-static void ws2812_color_cap(ws2812_color_t *c, uint16_t mul, uint16_t div) {
-    c->r = muldiv8_16(c->r, mul, div);
-    c->g = muldiv8_16(c->g, mul, div);
-    c->b = muldiv8_16(c->b, mul, div);
-}
-
 void led_matrix_task(uint64_t now) {
     static uint64_t last = 0;
     if (now - last < 10000) {
@@ -199,7 +189,6 @@ void led_matrix_task(uint64_t now) {
     memset(ws2812_array_states, 0, sizeof(ws2812_array_states));
     for (int i = 0; i < count_of(led_positions); i++) {
         led_matrix_get_color_call(&led_matrix_get_color, i, &ws2812_array_states[i].rgb, &led_positions[i], now);
-        ws2812_color_cap(&ws2812_array_states[i].rgb, 9, 20);
     }
 
 #if PERFCOUNT_LED_MATRIX_TASK

@@ -15,6 +15,12 @@
     #warning "WS2812_ARRAY_PIO is unavailable, pio0 is auto selected"
     #define WS2812_ARRAY_PIO pio0
 #endif
+#ifndef WS2812_ARRAY_MAX_CURRENT
+    #define WS2812_ARRAY_MAX_CURRENT 0
+#endif
+#ifndef WS2812_ARRAY_CURRENT_PER_CHANNEL
+    #define WS2812_ARRAY_CURRENT_PER_CHANNEL 5
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 // Types

@@ -58,7 +58,7 @@ void ws2812_array_init(void) {
     channel_config_set_transfer_data_size(&c, DMA_SIZE_32);
     channel_config_set_dreq(&c, pio_get_dreq(pio, sm, true));
     dma_channel_configure(chan, &c, &pio->txf[sm], NULL,
-            count_of(ws2812_array_states), false);
+            count_of(sendbuf), false);
 
     // enalbe IRQ0 at DMA trasfer completed.
     irq_set_exclusive_handler(DMA_IRQ_0, on_completed_dma);
@@ -67,6 +67,35 @@ void ws2812_array_init(void) {
 
     dma_chan = chan;
     dma_chan_mask = 1u << chan;
+}
+
+const uint64_t MAX_TOTAL_LEVEL = WS2812_ARRAY_MAX_CURRENT * 255 / WS2812_ARRAY_CURRENT_PER_CHANNEL;
+
+static inline uint8_t muldiv8_32(uint8_t v, uint32_t mul, uint32_t div) {
+    return (uint8_t)((uint32_t)v * mul / div);
+}
+
+static void apply_autocap(ws2812_state_t *p, int n) {
+    if (MAX_TOTAL_LEVEL == 0) {
+        return;
+    }
+    uint32_t total = 0;
+    for (int i = 0; i < n; i++) {
+        ws2812_color_t c = p[i].rgb;
+        total += c.b;
+        total += c.r;
+        total += c.g;
+    }
+    if (total <= MAX_TOTAL_LEVEL) {
+        return;
+    }
+    for (int i = 0; i < n; i++) {
+        ws2812_color_t *c = &p[i].rgb;
+        c->r = muldiv8_32(c->r, MAX_TOTAL_LEVEL, total);
+        c->g = muldiv8_32(c->g, MAX_TOTAL_LEVEL, total);
+        c->b = muldiv8_32(c->b, MAX_TOTAL_LEVEL, total);
+    }
+
 }
 
 bool ws2812_array_task(uint64_t now) {
@@ -80,6 +109,7 @@ bool ws2812_array_task(uint64_t now) {
     // Copy the DMA target to the send buffer to protect it from being
     // overwritten.
     memcpy(sendbuf, ws2812_array_states, sizeof(sendbuf));
+    apply_autocap(sendbuf, count_of(sendbuf));
     dma_channel_set_read_addr(dma_chan, sendbuf, true);
     return true;
 }
