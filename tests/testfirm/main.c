@@ -1,3 +1,7 @@
+#define PERFCOUNT_LED_MATRIX_TASK       1
+#define FEATURE_LED_WHILE_PRESSING      0
+#define FEATURE_RAINBOW                 1
+
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -183,13 +187,29 @@ void led_matrix_task(uint64_t now) {
     if (now - last < 10000) {
         return;
     }
+
+#if PERFCOUNT_LED_MATRIX_TASK
+    static uint64_t sum   = 0;
+    static uint64_t count = 0;
+    uint64_t start = time_us_64();
+#endif
+
     last = now;
     ws2812_array_dirty = true;
     memset(ws2812_array_states, 0, sizeof(ws2812_array_states));
     for (int i = 0; i < count_of(led_positions); i++) {
         led_matrix_get_color_call(&led_matrix_get_color, i, &ws2812_array_states[i].rgb, &led_positions[i], now);
-        ws2812_color_cap(&ws2812_array_states[i].rgb, 7, 10);
+        ws2812_color_cap(&ws2812_array_states[i].rgb, 9, 20);
     }
+
+#if PERFCOUNT_LED_MATRIX_TASK
+    sum += time_us_64() - start;
+    if (count++ >= 100) {
+        printf("led_matrix_task: performance %llu\n", sum / count);
+        sum = 0;
+        count = 0;
+    }
+#endif
 }
 
 static void add_color(ws2812_color_t *c, uint8_t r, uint8_t g, uint8_t b) {
@@ -198,11 +218,15 @@ static void add_color(ws2812_color_t *c, uint8_t r, uint8_t g, uint8_t b) {
     c->b = MAX(c->b, b);
 }
 
+static inline float fract(float x) {
+    return x - (int)x;
+}
+
 static void get_vertical_rainbow_color(void *data, int idx, ws2812_color_t *c, led_pos_t *pos, uint64_t now) {
     const uint8_t L = 255;
     float frac = (float)(now & frac_base_max) / (float)frac_base_max;
-    float hue = fmod(frac + pos->x / 8.0, 1.0) * 6.0;
-    uint8_t v = (uint8_t)(fmod(hue, 1.0) * L);
+    float hue = fract(frac + pos->x / 8.0) * 6.0;
+    uint8_t v = (uint8_t)(fract(hue) * L);
     uint8_t L_v = L - v;
     switch (((int)hue) % 6) {
         case 0: add_color(c, L,   v,   0  ); break;
@@ -262,24 +286,48 @@ static float time_reduction(float x, float t) {
     float denom = 1.0 - t;
     if (denom < 1e-7)
         denom = 1e-7;
-    return powf(x, 1.0 / denom);
+    float k = 1.0 / denom;
+    // A fast approximation of powf(x, k)
+    union { float f; int32_t i; } u;
+    u.f = x;
+    u.i = (int32_t)(k * (u.i - 0x3f7a3bea) + 0x3f7a3bea);
+    return u.f;
 }
 
 typedef struct {
     int led_index;
     uint64_t start;
+
+    uint64_t cached_start;
+    uint64_t cached_now;
+    float cached_t;
 } push_effect_t;
 
 push_effect_t push_effects[29] = {0};
+
+// A fast approximation of powf(0.2, x)
+static float fast_pow_02(float x) {
+    if (x < 1e-7) {
+        return 1.0f;
+    }
+    float y = x * -2.321928f;
+    union { float f; int i; } u;
+    u.i = (int)((1 << 23) * (y + 126.942695f));
+    return u.f;
+}
 
 static void light_effect_on_switch_press(void *data, int idx, ws2812_color_t *c, led_pos_t *pos, uint64_t now) {
     push_effect_t *p = (push_effect_t *)data;
     led_pos_t *center = &led_positions[p->led_index];
     float dx = pos->x - center->x;
     float dy = pos->y - center->y;
-    float r = sqrt(dx * dx + dy * dy);
-    float t = MIN((float)(now - p->start) / 1e6, 1);
-    float f = time_reduction(powf(0.2, r / 0.2), t);
+    float r = sqrtf(dx * dx + dy * dy);
+    if (p->cached_now != now || p->cached_start != p->start) {
+        p->cached_start = p->start;
+        p->cached_now = now;
+        p->cached_t = MIN((float)(now - p->start) / 1e6, 1);
+    }
+    float f = time_reduction(fast_pow_02(r / 0.2), p->cached_t);
     uint8_t v = (uint8_t)(255 * f);
     if (v > 0) {
         add_color(c, v, v, v);
@@ -298,7 +346,7 @@ static void on_sm_changed(switch_matrix_t *sm, uint64_t when, uint state_index, 
     printf("sm%d_changed: state_index=%-2d %-3s when=%llu\n", (int)sm->user, state_index, on ? "ON" : "OFF", when);
     if (state_index < count_of(sm_to_led_index)) {
         int led_index = sm_to_led_index[state_index];
-#if 0
+#if FEATURE_LED_WHILE_PRESSING
         if (on) {
             push_effect_t effect = { .led_index=led_index, .start=when };
             push_effects[led_index] = effect;
@@ -323,9 +371,14 @@ static void on_sm_changed(switch_matrix_t *sm, uint64_t when, uint state_index, 
 #endif
     }
     if (state_index == 29 && on) {
-        int i = color_provider_has(get_vertical_rainbow_color, NULL);
+#if FEATURE_RAINBOW
+        static led_matrix_get_color_cb cb = get_vertical_rainbow_color;
+#else
+        static led_matrix_get_color_cb cb = get_white_color;
+#endif
+        int i = color_provider_has(cb, NULL);
         if (i < 0) {
-            color_provider_add(get_vertical_rainbow_color, NULL);
+            color_provider_add(cb, NULL);
         } else {
             color_provider_remove(i);
         }
