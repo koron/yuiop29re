@@ -91,11 +91,10 @@ static void apply_autocap(ws2812_state_t *p, int n) {
     }
     for (int i = 0; i < n; i++) {
         ws2812_color_t *c = &p[i].rgb;
+        c->b = muldiv8_32(c->b, MAX_TOTAL_LEVEL, total);
         c->r = muldiv8_32(c->r, MAX_TOTAL_LEVEL, total);
         c->g = muldiv8_32(c->g, MAX_TOTAL_LEVEL, total);
-        c->b = muldiv8_32(c->b, MAX_TOTAL_LEVEL, total);
     }
-
 }
 
 bool ws2812_array_task(uint64_t now) {
